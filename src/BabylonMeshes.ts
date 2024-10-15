@@ -1,35 +1,218 @@
 import {
   Scene,
   Vector3,
-  SceneLoader,
   AbstractMesh,
-  StandardMaterial,
-  MeshBuilder,
-  Texture,
-  Material,
   ActionManager,
   ExecuteCodeAction,
   GizmoManager,
   Color3,
   PointerDragBehavior,
+  KeyboardEventTypes,
 } from "@babylonjs/core";
-import "@babylonjs/loaders";
+import MeshLoaders from "./MeshLoaders";
 
 type MeshTypes = "2D" | "gltf";
 
 type GizmoStateTypes = "position" | "scale" | "rotation" | "none";
 
 class BabylonMeshes {
-  constructor(
-    private scene: Scene,
-    private meshes: {
-      "2D": { [mesh: string]: AbstractMesh };
-      "3D": { [mesh: string]: AbstractMesh | AbstractMesh[] };
-    }
-  ) {}
+  private meshes: {
+    "2D": { [mesh: string]: AbstractMesh };
+    "3D": { [mesh: string]: AbstractMesh | AbstractMesh[] };
+  } = { "2D": {}, "3D": {} };
+  private selectedMesh: AbstractMesh | null = null;
+
+  private controlPressed = false;
+  private shiftPressed = false;
+
+  private meshLoaders: MeshLoaders;
+
+  constructor(private scene: Scene) {
+    this.meshLoaders = new MeshLoaders(this.scene);
+
+    this.scene.onKeyboardObservable.add((kbInfo) => {
+      kbInfo.event.preventDefault();
+
+      switch (kbInfo.type) {
+        case KeyboardEventTypes.KEYDOWN:
+          const keyDown = kbInfo.event.key.toLowerCase();
+          console.log(keyDown);
+          switch (keyDown) {
+            case " ":
+              if (this.selectedMesh) {
+                this.togglePlayAnimationOnMesh(this.selectedMesh);
+              } else {
+                console.error("No mesh selected");
+              }
+              break;
+            case "delete":
+              if (this.selectedMesh) {
+                this.deleteMesh(this.selectedMesh);
+              } else {
+                console.error("No mesh selected");
+              }
+              break;
+            case "escape":
+              if (this.selectedMesh) {
+                this.escapeMesh(this.selectedMesh);
+              } else {
+                console.error("No mesh selected");
+              }
+              break;
+            case "control":
+              this.controlPressed = true;
+              break;
+            case "shift":
+              this.shiftPressed = true;
+              break;
+            case "g":
+              if (this.controlPressed && this.shiftPressed) {
+                if (this.selectedMesh) {
+                  this.disableGizmo(this.selectedMesh);
+                  this.selectedMesh.metadata.gizmoState = "position";
+
+                  const meshLabel = this.selectedMesh.metadata.meshLabel;
+                  if (meshLabel in this.meshes["3D"]) {
+                    if (this.meshes["3D"][meshLabel] instanceof Array) {
+                      for (const mesh of this.meshes["3D"][meshLabel]) {
+                        if (mesh.metadata) {
+                          mesh.metadata.gizmoState = "position";
+                        }
+                      }
+                    } else {
+                      this.meshes["3D"][meshLabel].metadata.gizmoState =
+                        "position";
+                    }
+                  } else if (meshLabel in this.meshes["2D"]) {
+                    if (this.meshes["2D"][meshLabel] instanceof Array) {
+                      for (const mesh of this.meshes["2D"][meshLabel]) {
+                        if (mesh.metadata) {
+                          mesh.metadata.gizmoState = "position";
+                        }
+                      }
+                    } else {
+                      this.meshes["2D"][meshLabel].metadata.gizmoState =
+                        "position";
+                    }
+                  }
+
+                  this.enableGizmo(
+                    "position",
+                    this.selectedMesh.metadata.meshType,
+                    this.selectedMesh
+                  );
+                } else {
+                  console.error("No mesh selected");
+                }
+              }
+              break;
+            case "r":
+              if (this.controlPressed && this.shiftPressed) {
+                if (this.selectedMesh) {
+                  this.disableGizmo(this.selectedMesh);
+                  this.selectedMesh.metadata.gizmoState = "rotation";
+
+                  const meshLabel = this.selectedMesh.metadata.meshLabel;
+                  if (meshLabel in this.meshes["3D"]) {
+                    if (this.meshes["3D"][meshLabel] instanceof Array) {
+                      for (const mesh of this.meshes["3D"][meshLabel]) {
+                        if (mesh.metadata) {
+                          mesh.metadata.gizmoState = "rotation";
+                        }
+                      }
+                    } else {
+                      this.meshes["3D"][meshLabel].metadata.gizmoState =
+                        "rotation";
+                    }
+                  } else if (meshLabel in this.meshes["2D"]) {
+                    if (this.meshes["2D"][meshLabel] instanceof Array) {
+                      for (const mesh of this.meshes["2D"][meshLabel]) {
+                        if (mesh.metadata) {
+                          mesh.metadata.gizmoState = "rotation";
+                        }
+                      }
+                    } else {
+                      this.meshes["2D"][meshLabel].metadata.gizmoState =
+                        "rotation";
+                    }
+                  }
+
+                  this.enableGizmo(
+                    "rotation",
+                    this.selectedMesh.metadata.meshType,
+                    this.selectedMesh
+                  );
+                } else {
+                  console.error("No mesh selected");
+                }
+              }
+              break;
+            case "s":
+              if (this.controlPressed && this.shiftPressed) {
+                if (this.selectedMesh) {
+                  this.disableGizmo(this.selectedMesh);
+                  this.selectedMesh.metadata.gizmoState = "scale";
+
+                  const meshLabel = this.selectedMesh.metadata.meshLabel;
+                  if (meshLabel in this.meshes["3D"]) {
+                    if (this.meshes["3D"][meshLabel] instanceof Array) {
+                      for (const mesh of this.meshes["3D"][meshLabel]) {
+                        if (mesh.metadata) {
+                          mesh.metadata.gizmoState = "scale";
+                        }
+                      }
+                    } else {
+                      this.meshes["3D"][meshLabel].metadata.gizmoState =
+                        "scale";
+                    }
+                  } else if (meshLabel in this.meshes["2D"]) {
+                    if (this.meshes["2D"][meshLabel] instanceof Array) {
+                      for (const mesh of this.meshes["2D"][meshLabel]) {
+                        if (mesh.metadata) {
+                          mesh.metadata.gizmoState = "scale";
+                        }
+                      }
+                    } else {
+                      this.meshes["2D"][meshLabel].metadata.gizmoState =
+                        "scale";
+                    }
+                  }
+
+                  this.enableGizmo(
+                    "scale",
+                    this.selectedMesh.metadata.meshType,
+                    this.selectedMesh
+                  );
+                } else {
+                  console.error("No mesh selected");
+                }
+              }
+              break;
+            default:
+              break;
+          }
+          break;
+        case KeyboardEventTypes.KEYUP:
+          const keyUp = kbInfo.event.key.toLowerCase();
+
+          switch (keyUp) {
+            case "control":
+              this.controlPressed = false;
+              break;
+            case "shift":
+              this.shiftPressed = false;
+              break;
+            default:
+              break;
+          }
+          break;
+      }
+    });
+  }
 
   loader = async (
     type: MeshTypes,
+    meshLabel: string,
     meshName: string,
     meshPath: string,
     meshFile: string,
@@ -38,8 +221,13 @@ class BabylonMeshes {
     rotation?: [number, number, number]
   ) => {
     if (type === "gltf") {
-      await this.loadGLTF(meshName, meshPath, meshFile); // Wait for the mesh to load
-      const newMesh = this.meshes["3D"][meshName];
+      const newMesh = await this.meshLoaders.loadGLTF(
+        meshLabel,
+        meshName,
+        meshPath,
+        meshFile
+      );
+      this.meshes["3D"][meshLabel] = newMesh;
 
       // Check if the mesh is loaded
       if (newMesh) {
@@ -57,8 +245,13 @@ class BabylonMeshes {
       }
     }
     if (type === "2D") {
-      await this.load2D(meshName, meshPath, meshFile); // Wait for the mesh to load
-      const newMesh = this.meshes["2D"][meshName];
+      const newMesh = await this.meshLoaders.load2D(
+        meshLabel,
+        meshName,
+        meshPath,
+        meshFile
+      );
+      this.meshes["2D"][meshLabel] = newMesh;
 
       // Check if the mesh is loaded
       if (newMesh) {
@@ -98,18 +291,67 @@ class BabylonMeshes {
     mesh: AbstractMesh,
     parentMesh?: AbstractMesh
   ) => {
-    // Initialize dragging state (false by default)
-    mesh.metadata = { isGizmoEnabled: false };
+    let clickTimeout: NodeJS.Timeout; // To hold the timeout for single click
+    let doubleClickRegistered = false; // To check if double click was triggered
+
+    this.scene.onBeforeRenderObservable.add(() => {
+      mesh.refreshBoundingInfo({ applySkeleton: true }); // Update the bounding box of the mesh each frame
+    });
+
+    mesh.actionManager = new ActionManager(this.scene);
+
+    // Handle single-click action with a slight delay
+    mesh.actionManager.registerAction(
+      new ExecuteCodeAction(ActionManager.OnPickTrigger, () => {
+        // Start a timeout for single-click, which waits briefly to see if a double-click occurs
+        clickTimeout = setTimeout(() => {
+          // Only play animation if no double-click was registered
+          if (!doubleClickRegistered) {
+            if (
+              !this.selectedMesh ||
+              (this.selectedMesh !== mesh && this.selectedMesh !== parentMesh)
+            ) {
+              if (parentMesh) {
+                this.selectedMesh = parentMesh;
+              } else {
+                this.selectedMesh = mesh;
+              }
+            }
+
+            this.togglePlayAnimationOnMesh(this.selectedMesh);
+          }
+
+          // Reset the double-click registered flag
+          doubleClickRegistered = false;
+        }, 250); // Small delay to check for double click (in milliseconds)
+      })
+    );
 
     // Handle double-clicks to toggle gizmo
-    mesh.actionManager = new ActionManager(this.scene);
     mesh.actionManager.registerAction(
       new ExecuteCodeAction(ActionManager.OnDoublePickTrigger, () => {
+        // Mark double click as registered
+        doubleClickRegistered = true;
+
+        // Clear the single click timeout to prevent single-click action
+        clearTimeout(clickTimeout);
+
+        if (
+          !this.selectedMesh ||
+          (this.selectedMesh !== mesh && this.selectedMesh !== parentMesh)
+        ) {
+          if (parentMesh) {
+            this.selectedMesh = parentMesh;
+          } else {
+            this.selectedMesh = mesh;
+          }
+        }
+
+        // Handle gizmo toggle on double click
         const nextState = this.getNextGizmoState(mesh.metadata.gizmoState);
         mesh.metadata.gizmoState = nextState;
 
         // Toggle gizmo state
-        // If the gizmo is enabled, disable it
         if (parentMesh) {
           this.disableGizmo(parentMesh);
         } else {
@@ -126,20 +368,124 @@ class BabylonMeshes {
         }
       })
     );
+  };
 
-    mesh.actionManager.registerAction(
-      new ExecuteCodeAction(ActionManager.OnPickTrigger, () => {
-        const animationGroups = this.scene.animationGroups;
+  private togglePlayAnimationOnMesh = (mesh: AbstractMesh) => {
+    const animationGroups = this.scene.animationGroups;
 
-        // Loop through all animation groups
-        animationGroups.forEach((animGroup) => {
-          // Check if this animation group targets the clicked mesh
-          animGroup.targetedAnimations.forEach((targetedAnim) => {
-            animGroup.play(false); // Play the animation group for this mesh
-          });
-        });
-      })
-    );
+    animationGroups.forEach((animGroup) => {
+      if (
+        mesh &&
+        mesh.metadata.meshLabel !== undefined &&
+        mesh.metadata.meshLabel === animGroup.metadata.meshLabel
+      ) {
+        if (animGroup.isPlaying) {
+          animGroup.pause();
+        } else {
+          animGroup.play(false);
+        }
+      }
+    });
+  };
+
+  private deleteMesh = (mesh: AbstractMesh) => {
+    // Remove the mesh from the collection
+    if (mesh.metadata) {
+      const meshLabel = mesh.metadata.meshLabel;
+      if (meshLabel in this.meshes["3D"]) {
+        delete this.meshes["3D"][meshLabel];
+      } else if (meshLabel in this.meshes["2D"]) {
+        delete this.meshes["2D"][meshLabel];
+      }
+    }
+
+    this.disableGizmo(mesh);
+
+    // Stop animations associated with the mesh
+    const animationGroups = this.scene.animationGroups;
+    animationGroups.forEach((animGroup) => {
+      animGroup.targetedAnimations.forEach((targetedAnim) => {
+        if (mesh) {
+          // Compare the final node with the targeted animation's target
+          if (
+            mesh.metadata.meshLabel !== undefined &&
+            mesh.metadata.meshLabel === targetedAnim.target.metadata.meshLabel
+          ) {
+            animGroup.stop(); // Stop the animation before removing the mesh
+          }
+        }
+      });
+    });
+
+    // Check if the selected mesh has a parent
+    const parentMesh = mesh.parent;
+
+    if (parentMesh) {
+      // Remove all child meshes of the parent
+      parentMesh.getChildMeshes().forEach((childMesh) => {
+        childMesh.dispose(); // Dispose the child mesh
+      });
+
+      // Remove the parent mesh itself
+      parentMesh.dispose(); // Dispose the parent mesh
+    }
+
+    // Remove the selected mesh if it has no parent
+    mesh.dispose(); // Dispose the selected mesh
+
+    // Clear the selected mesh reference
+    this.selectedMesh = null;
+  };
+
+  private escapeMesh = (mesh: AbstractMesh) => {
+    // Disable gizmo
+    this.disableGizmo(mesh);
+
+    // Reset gizmo state
+    if (mesh.metadata) {
+      mesh.metadata.gizmoState = "none";
+
+      const meshLabel = mesh.metadata.meshLabel;
+      if (meshLabel in this.meshes["3D"]) {
+        if (this.meshes["3D"][meshLabel] instanceof Array) {
+          for (const mesh of this.meshes["3D"][meshLabel]) {
+            if (mesh.metadata) {
+              mesh.metadata.gizmoState = "none";
+            }
+          }
+        } else {
+          this.meshes["3D"][meshLabel].metadata.gizmoState = "none";
+        }
+      } else if (meshLabel in this.meshes["2D"]) {
+        if (this.meshes["2D"][meshLabel] instanceof Array) {
+          for (const mesh of this.meshes["2D"][meshLabel]) {
+            if (mesh.metadata) {
+              mesh.metadata.gizmoState = "none";
+            }
+          }
+        } else {
+          this.meshes["2D"][meshLabel].metadata.gizmoState = "none";
+        }
+      }
+    }
+
+    // Stop animations associated with the mesh
+    const animationGroups = this.scene.animationGroups;
+    animationGroups.forEach((animGroup) => {
+      animGroup.targetedAnimations.forEach((targetedAnim) => {
+        if (mesh) {
+          // Compare the final node with the targeted animation's target
+          if (
+            mesh.metadata.meshLabel !== undefined &&
+            mesh.metadata.meshLabel === targetedAnim.target.metadata.meshLabel
+          ) {
+            animGroup.stop(); // Stop the animation before removing the mesh
+          }
+        }
+      });
+    });
+
+    this.selectedMesh = null;
   };
 
   // Helper function to determine the next gizmo state
@@ -287,86 +633,6 @@ class BabylonMeshes {
     if (dragBehavior) {
       mesh.removeBehavior(dragBehavior);
     }
-  };
-
-  private loadGLTF = (meshName: string, meshPath: string, meshFile: string) => {
-    return new Promise<void>((resolve, reject) => {
-      // Load the GLTF file
-      SceneLoader.ImportMesh(
-        meshName,
-        meshPath,
-        meshFile,
-        this.scene,
-        (meshes, particleSystems, skeletons, animationGroups) => {
-          if (meshes.length > 0) {
-            animationGroups.forEach((animationGroup) => {
-              animationGroup.pause(); // Pause the animation by default
-            });
-
-            const parentMesh = MeshBuilder.CreateBox(
-              `${meshName}-parent`,
-              { size: 0.1 },
-              this.scene
-            );
-            parentMesh.isVisible = false; // Optionally make the parent mesh invisible
-            parentMesh.isPickable = false; // Prevent direct interaction with the parent
-
-            // Set each loaded mesh as a child of the parent
-            meshes.forEach((mesh) => {
-              mesh.parent = parentMesh; // Set the parent
-              mesh.isPickable = true; // Ensure the mesh is pickable
-            });
-
-            // Store the parent mesh in the meshes collection
-            this.meshes["3D"][meshName] = [parentMesh, ...meshes];
-            resolve(); // Resolve the promise when the mesh is loaded
-          } else {
-            reject(new Error(`No meshes found for ${meshName}`));
-          }
-        },
-        null,
-        (scene, message, exception) => {
-          console.error(`Error loading mesh: ${message}`, exception);
-          reject(exception); // Reject the promise on error
-        }
-      );
-    });
-  };
-
-  private load2D = async (
-    meshName: string,
-    meshPath: string,
-    meshFile: string
-  ) => {
-    return new Promise<void>((resolve) => {
-      // Create a plane for the 2D texture
-      const plane = MeshBuilder.CreatePlane(
-        meshName,
-        { width: 1, height: 1 },
-        this.scene
-      );
-
-      // Create the material with alpha
-      const material = new StandardMaterial(`${meshName}-material`, this.scene);
-
-      // Load the texture with transparency
-      const texture = new Texture(`${meshPath}${meshFile}`, this.scene);
-      texture.hasAlpha = true;
-
-      material.diffuseTexture = texture;
-
-      // Enable alpha blending
-      material.useAlphaFromDiffuseTexture = true; // Use the alpha channel from the diffuse texture
-      material.transparencyMode = Material.MATERIAL_ALPHABLEND; // Set transparency mode to alpha test
-
-      // Assign material to the plane
-      plane.material = material;
-
-      // Store the mesh in the 2D meshes collection
-      this.meshes["2D"][meshName] = plane;
-
-      resolve(); // Resolve when the 2D mesh is created
-    });
   };
 }
 

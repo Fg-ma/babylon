@@ -7,7 +7,6 @@ import {
   StandardMaterial,
   VideoTexture,
   UniversalCamera,
-  Plane,
   Mesh,
   AbstractMesh,
 } from "@babylonjs/core";
@@ -26,11 +25,6 @@ class BabylonScene {
 
   private babylonMeshes: BabylonMeshes;
 
-  private meshes: {
-    "2D": { [mesh: string]: AbstractMesh };
-    "3D": { [mesh: string]: AbstractMesh };
-  } = { "2D": {}, "3D": {} };
-
   constructor(private canvas: HTMLCanvasElement | null) {
     this.engine = new Engine(canvas, true);
     this.scene = new Scene(this.engine);
@@ -47,27 +41,30 @@ class BabylonScene {
     this.initLighting();
     this.initVideoPlane();
 
-    this.babylonMeshes = new BabylonMeshes(this.scene, this.meshes);
-    // this.babylonMeshes.loader(
-    //   "gltf",
-    //   "babyDragon",
-    //   "/",
-    //   "pets.gltf",
-    //   [0, 0, 90],
-    //   [10, 10, 10],
-    //   [Math.PI / 2, 0, Math.PI]
-    // );
-    // this.babylonMeshes.loader(
-    //   "2D",
-    //   "babyDragon",
-    //   "/",
-    //   "babyDragon_512x512.png",
-    //   [0, 0, 100],
-    //   [10, 10, 10],
-    //   [0, 0, 0]
-    // );
+    this.babylonMeshes = new BabylonMeshes(this.scene);
     this.babylonMeshes.loader(
       "gltf",
+      "babyDragon_gltf",
+      "",
+      "/",
+      "pets.gltf",
+      [0, 0, 90],
+      [10, 10, 10],
+      [Math.PI / 2, 0, Math.PI]
+    );
+    this.babylonMeshes.loader(
+      "2D",
+      "babyDragon_2D",
+      "",
+      "/",
+      "babyDragon_512x512.png",
+      [0, 0, 100],
+      [10, 10, 10],
+      [0, 0, 0]
+    );
+    this.babylonMeshes.loader(
+      "gltf",
+      "trex_gltf",
       "",
       "/animated_t-rex_dinosaur_biting_attack_loop/",
       "scene.gltf",
