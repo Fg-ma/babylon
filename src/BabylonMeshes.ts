@@ -11,8 +11,13 @@ import {
   ExecuteCodeAction,
   GizmoManager,
   Color3,
+  PointerDragBehavior,
 } from "@babylonjs/core";
 import "@babylonjs/loaders";
+
+type MeshTypes = "2D" | "gltf";
+
+type GizmoStateTypes = "position" | "scale" | "rotation" | "none";
 
 class BabylonMeshes {
   constructor(
@@ -24,7 +29,7 @@ class BabylonMeshes {
   ) {}
 
   loader = async (
-    type: "2D" | "gltf",
+    type: MeshTypes,
     meshName: string,
     meshPath: string,
     meshFile: string,
@@ -41,11 +46,11 @@ class BabylonMeshes {
         if (newMesh instanceof Array) {
           this.applyMeshAttributes(newMesh[0], position, scale, rotation);
           for (const mesh of newMesh) {
-            this.applyMeshActions(mesh, newMesh[0]);
+            this.applyMeshActions(type, mesh, newMesh[0]);
           }
         } else {
           this.applyMeshAttributes(newMesh, position, scale, rotation);
-          this.applyMeshActions(newMesh);
+          this.applyMeshActions(type, newMesh);
         }
       } else {
         console.error(`Mesh ${meshName} not found after loading.`);
@@ -58,7 +63,7 @@ class BabylonMeshes {
       // Check if the mesh is loaded
       if (newMesh) {
         this.applyMeshAttributes(newMesh, position, scale, rotation);
-        this.applyMeshActions(newMesh);
+        this.applyMeshActions(type, newMesh);
       } else {
         console.error(`Mesh ${meshName} not found after loading.`);
       }
@@ -89,6 +94,7 @@ class BabylonMeshes {
   };
 
   private applyMeshActions = (
+    type: MeshTypes,
     mesh: AbstractMesh,
     parentMesh?: AbstractMesh
   ) => {
@@ -99,59 +105,166 @@ class BabylonMeshes {
     mesh.actionManager = new ActionManager(this.scene);
     mesh.actionManager.registerAction(
       new ExecuteCodeAction(ActionManager.OnDoublePickTrigger, () => {
+        const nextState = this.getNextGizmoState(mesh.metadata.gizmoState);
+        mesh.metadata.gizmoState = nextState;
+
         // Toggle gizmo state
-        if (mesh.metadata.isGizmoEnabled) {
-          // If the gizmo is enabled, disable it
-          if (parentMesh) {
-            this.disableGizmo(parentMesh);
-          } else {
-            this.disableGizmo(mesh);
-          }
-          mesh.metadata.isGizmoEnabled = false;
+        // If the gizmo is enabled, disable it
+        if (parentMesh) {
+          this.disableGizmo(parentMesh);
         } else {
+          this.disableGizmo(mesh);
+        }
+
+        if (nextState !== "none") {
           // Enable gizmo
           if (parentMesh) {
-            this.enableGizmo(parentMesh);
+            this.enableGizmo(nextState, type, parentMesh);
           } else {
-            this.enableGizmo(mesh);
+            this.enableGizmo(nextState, type, mesh);
           }
-          mesh.metadata.isGizmoEnabled = true;
         }
+      })
+    );
+
+    mesh.actionManager.registerAction(
+      new ExecuteCodeAction(ActionManager.OnPickTrigger, () => {
+        const animationGroups = this.scene.animationGroups;
+
+        // Loop through all animation groups
+        animationGroups.forEach((animGroup) => {
+          // Check if this animation group targets the clicked mesh
+          animGroup.targetedAnimations.forEach((targetedAnim) => {
+            animGroup.play(false); // Play the animation group for this mesh
+          });
+        });
       })
     );
   };
 
+  // Helper function to determine the next gizmo state
+  private getNextGizmoState = (
+    currentState: GizmoStateTypes
+  ): GizmoStateTypes => {
+    switch (currentState) {
+      case "none":
+        return "position";
+      case "position":
+        return "rotation";
+      case "rotation":
+        return "scale";
+      case "scale":
+        return "none";
+      default:
+        return "none";
+    }
+  };
+
   // Function to enable the position gizmo for a mesh
-  private enableGizmo = (mesh: AbstractMesh) => {
+  private enableGizmo = (
+    gizmoType: GizmoStateTypes,
+    type: MeshTypes,
+    mesh: AbstractMesh
+  ) => {
     // Create a GizmoManager to manage gizmos in the scene
     const gizmoManager = new GizmoManager(this.scene);
 
-    // Enable position gizmo, which allows movement along X, Y, and Z axes
-    gizmoManager.positionGizmoEnabled = true;
+    switch (gizmoType) {
+      case "position":
+        gizmoManager.positionGizmoEnabled = true;
 
-    const positionGizmo = gizmoManager.gizmos.positionGizmo;
-    if (positionGizmo) {
-      positionGizmo.xGizmo.coloredMaterial.diffuseColor = new Color3(
-        0.96078431,
-        0.38039215,
-        0.0784313725490196
-      ); // Red for X axis
-      positionGizmo.yGizmo.coloredMaterial.diffuseColor = new Color3(
-        0.17254901,
-        0.57254901,
-        0.9607843137254902
-      ); // Green for Y axis
-      positionGizmo.zGizmo.coloredMaterial.diffuseColor = new Color3(
-        0.30980392,
-        0.6666666666666666,
-        0.5333333333333333
-      ); // Blue for Z axis
+        const positionGizmo = gizmoManager.gizmos.positionGizmo;
+        if (positionGizmo) {
+          positionGizmo.xGizmo.coloredMaterial.diffuseColor = new Color3(
+            0.96078431,
+            0.38039215,
+            0.0784313725490196
+          ); // Red for X axis
+          positionGizmo.yGizmo.coloredMaterial.diffuseColor = new Color3(
+            0.17254901,
+            0.57254901,
+            0.9607843137254902
+          ); // Green for Y axis
+          positionGizmo.zGizmo.coloredMaterial.diffuseColor = new Color3(
+            0.30980392,
+            0.6666666666666666,
+            0.5333333333333333
+          ); // Blue for Z axis
+        }
+
+        // Set the gizmo to use world space (fixed axes) instead of local space
+        gizmoManager.gizmos.positionGizmo!.updateGizmoRotationToMatchAttachedMesh =
+          false;
+        gizmoManager.usePointerToAttachGizmos = false; // Disable auto attaching
+
+        // Add dragging behavior along a specific plane (Y-axis constrained)
+        let dragBehavior: PointerDragBehavior;
+        if (type === "2D") {
+          dragBehavior = new PointerDragBehavior({
+            dragPlaneNormal: new Vector3(0, 0, 1), // Dragging plane: XZ plane
+          });
+        } else {
+          dragBehavior = new PointerDragBehavior({
+            dragPlaneNormal: new Vector3(0, 1, 0), // Dragging plane: XZ plane
+          });
+        }
+
+        // Attach the drag behavior to the mesh
+        mesh.addBehavior(dragBehavior);
+
+        // Store the drag behavior in the mesh's metadata for later access
+        mesh.metadata.dragBehavior = dragBehavior;
+        break;
+      case "rotation":
+        gizmoManager.rotationGizmoEnabled = true;
+
+        const rotationGizmo = gizmoManager.gizmos.rotationGizmo;
+        if (rotationGizmo) {
+          rotationGizmo.xGizmo.coloredMaterial.diffuseColor = new Color3(
+            0.96078431,
+            0.38039215,
+            0.0784313725490196
+          ); // Red for X axis
+          rotationGizmo.yGizmo.coloredMaterial.diffuseColor = new Color3(
+            0.17254901,
+            0.57254901,
+            0.9607843137254902
+          ); // Green for Y axis
+          rotationGizmo.zGizmo.coloredMaterial.diffuseColor = new Color3(
+            0.30980392,
+            0.6666666666666666,
+            0.5333333333333333
+          ); // Blue for Z axis
+        }
+
+        // Set the gizmo to use world space (fixed axes) instead of local space
+        gizmoManager.gizmos.rotationGizmo!.updateGizmoRotationToMatchAttachedMesh =
+          false;
+        gizmoManager.usePointerToAttachGizmos = false; // Disable auto attaching
+        break;
+      case "scale":
+        gizmoManager.scaleGizmoEnabled = true;
+
+        const scaleGizmo = gizmoManager.gizmos.scaleGizmo;
+        if (scaleGizmo) {
+          scaleGizmo.xGizmo.coloredMaterial.diffuseColor = new Color3(
+            0.96078431,
+            0.38039215,
+            0.0784313725490196
+          ); // Red for X axis
+          scaleGizmo.yGizmo.coloredMaterial.diffuseColor = new Color3(
+            0.17254901,
+            0.57254901,
+            0.9607843137254902
+          ); // Green for Y axis
+          scaleGizmo.zGizmo.coloredMaterial.diffuseColor = new Color3(
+            0.30980392,
+            0.6666666666666666,
+            0.5333333333333333
+          ); // Blue for Z axis
+        }
+        break;
     }
-
-    // Set the gizmo to use world space (fixed axes) instead of local space
-    gizmoManager.gizmos.positionGizmo!.updateGizmoRotationToMatchAttachedMesh =
-      false;
-    gizmoManager.usePointerToAttachGizmos = false; // Disable auto attaching
 
     // Attach the gizmo to the selected mesh
     gizmoManager.attachToMesh(mesh);
@@ -168,6 +281,12 @@ class BabylonMeshes {
       gizmoManager.attachToMesh(null);
       gizmoManager.dispose(); // Clean up the gizmo manager
     }
+
+    // Remove the drag behavior
+    const dragBehavior = mesh.metadata.dragBehavior;
+    if (dragBehavior) {
+      mesh.removeBehavior(dragBehavior);
+    }
   };
 
   private loadGLTF = (meshName: string, meshPath: string, meshFile: string) => {
@@ -178,8 +297,12 @@ class BabylonMeshes {
         meshPath,
         meshFile,
         this.scene,
-        (meshes) => {
+        (meshes, particleSystems, skeletons, animationGroups) => {
           if (meshes.length > 0) {
+            animationGroups.forEach((animationGroup) => {
+              animationGroup.pause(); // Pause the animation by default
+            });
+
             const parentMesh = MeshBuilder.CreateBox(
               `${meshName}-parent`,
               { size: 0.1 },

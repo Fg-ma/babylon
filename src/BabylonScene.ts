@@ -48,23 +48,32 @@ class BabylonScene {
     this.initVideoPlane();
 
     this.babylonMeshes = new BabylonMeshes(this.scene, this.meshes);
+    // this.babylonMeshes.loader(
+    //   "gltf",
+    //   "babyDragon",
+    //   "/",
+    //   "pets.gltf",
+    //   [0, 0, 90],
+    //   [10, 10, 10],
+    //   [Math.PI / 2, 0, Math.PI]
+    // );
+    // this.babylonMeshes.loader(
+    //   "2D",
+    //   "babyDragon",
+    //   "/",
+    //   "babyDragon_512x512.png",
+    //   [0, 0, 100],
+    //   [10, 10, 10],
+    //   [0, 0, 0]
+    // );
     this.babylonMeshes.loader(
       "gltf",
-      "babyDragon",
-      "/",
-      "pets.gltf",
+      "",
+      "/animated_t-rex_dinosaur_biting_attack_loop/",
+      "scene.gltf",
       [0, 0, 90],
-      [10, 10, 10],
-      [Math.PI / 2, 0, Math.PI]
-    );
-    this.babylonMeshes.loader(
-      "2D",
-      "babyDragon",
-      "/",
-      "babyDragon_512x512.png",
-      [0, 0, 100],
-      [10, 10, 10],
-      [0, 0, 0]
+      [0.1, 0.1, 0.1],
+      [Math.PI, 0, Math.PI]
     );
 
     // Render loop
